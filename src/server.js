@@ -452,18 +452,33 @@ app.get("/bracciali/uid/:uid", async (req, res) => {
       return res.status(400).json({ error: "evento_id mancante" });
     }
 
-    const result = await pool.query(
+    // 1) CERCO SE ESISTE GIÀ
+    const esistente = await pool.query(
       "SELECT * FROM bracciali WHERE uid = $1 AND evento_id = $2",
       [uid, evento_id]
     );
 
-    if (result.rows.length > 0) {
-      return res.json(result.rows[0]);
+    if (esistente.rows.length > 0) {
+      return res.json(esistente.rows[0]);
     }
 
+    // 2) SE NON ESISTE → GENERO CODICE UNICO
+    let codice;
+    let esiste = true;
+
+    while (esiste) {
+      codice = generaCodiceBracciale();
+      const check = await pool.query(
+        "SELECT id FROM bracciali WHERE codice = $1",
+        [codice]
+      );
+      esiste = check.rows.length > 0;
+    }
+
+    // 3) CREO NUOVO BRACCIALE CON UID + CODICE
     const nuovo = await pool.query(
-      "INSERT INTO bracciali (uid, evento_id) VALUES ($1, $2) RETURNING *",
-      [uid, evento_id]
+      "INSERT INTO bracciali (uid, evento_id, codice) VALUES ($1, $2, $3) RETURNING *",
+      [uid, evento_id, codice]
     );
 
     res.json(nuovo.rows[0]);
