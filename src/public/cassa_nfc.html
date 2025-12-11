@@ -200,26 +200,26 @@
         reader.onreading = async (event) => {
           const uid = event.serialNumber;
           document.getElementById("uid_label").innerText = uid;
-
+        
           const res = await fetch(
             "/bracciali/uid/" + uid + "?evento_id=" + eventoCorrente
           );
-
+        
           const data = await res.json();
-
+        
           if (!data.id) {
-            document.getElementById("msg").innerText =
-              "Bracciale non trovato ❌";
+            document.getElementById("msg").innerText = "Bracciale non trovato ❌";
             return;
           }
-
+        
           braccialeId = data.id;
           bozzaCarico = {};
           bozzaBloccata = false;
-
+        
           document.getElementById("bracciale_label").innerText = braccialeId;
+          document.getElementById("codice_label").innerText = data.codice || "----";
           document.getElementById("msg").innerText = "Bracciale pronto ✅";
-
+        
           aggiornaSaldoCassa();
           aggiornaColoriCassa();
           aggiornaAnteprimaBozza();
