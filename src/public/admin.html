@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Admin Panel Evento</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+
+    <!-- 🔐 SOLO ADMIN -->
+    <script>
+      const operatore = JSON.parse(localStorage.getItem("operatore"));
+      if (!operatore || operatore.ruolo !== "admin") {
+        window.location.href = "login.html";
+      }
+    </script>
+
+    <style>
+      body { font-family: Arial, sans-serif; padding: 20px; }
+      h2 { margin-top: 30px; }
+      .box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
+      button { margin: 4px 0; }
+      ul { padding-left: 18px; }
+      li { margin: 3px 0; }
+    </style>
+  </head>
+  <body>
+    <h1>🛠️ ADMIN PANEL (per evento)</h1>
+
+    <!-- EVENTI -->
+    <div class="box">
+      <h2>📅 Eventi</h2>
+      <label>Evento attivo:</label>
+      <select id="evento_select" onchange="cambiaEvento()"></select>
+
+      <h3>📱 QR Shop Evento</h3>
+      <div id="qr_evento"></div>
+      <p id="url_evento"></p>
+
+      <button onclick="generaQrEvento()">🔗 Genera QR evento</button>
+
+      <h3>Crea nuovo evento</h3>
+      <input type="text" id="nome_evento" placeholder="Nome evento" />
+      <input type="date" id="data_evento" />
+
+      <label style="font-size: 13px;">Colore tema</label>
+      <input type="color" id="accent_color_evento" value="#0a84ff" />
+
+      <label style="font-size: 13px;">Logo URL (opzionale)</label>
+      <input type="text" id="logo_evento" placeholder="https://...logo.png" />
+
+      <button onclick="creaEvento()">➕ Crea Evento</button>
+
+      <br /><br />
+      <button onclick="eliminaEvento()">❌ Elimina evento selezionato</button><button onclick="togglePubblicoEvento()">👁️ Mostra / Nascondi evento</button>
+      <br /><br />
+      <button class="reset" onclick="resetEvento()">🔄 RESET TOTALE EVENTO</button>
+      <br /><br />
+      <button class="export" onclick="exportEvento()">📤 Export CSV evento</button>
+    </div>
+
+    <!-- OPERATORI -->
+    <div class="box">
+      <h2>👤 Operatori dell'evento</h2>
+
+      <h3>Crea operatore</h3>
+      <input type="text" id="nome_operatore" placeholder="Nome" />
+      <input type="password" id="password_operatore" placeholder="Password" />
+      <select id="ruolo_operatore">
+        <option value="admin">Admin</option>
+        <option value="cassa">Cassa</option>
+        <option value="bar">Bar</option>
+      </select>
+      <button onclick="creaOperatore()">➕ Crea Operatore</button>
+
+      <h3>Lista operatori</h3>
+      <ul id="lista_operatori"></ul>
+    </div>
+
+    <!-- PRODOTTI -->
+    <div class="box">
+      <h2>🍹 Prodotti dell'evento</h2>
+
+      <h3>Aggiungi prodotto</h3>
+      <input type="text" id="nome_prodotto" placeholder="Nome prodotto" />
+      <input
+        type="number"
+        id="prezzo_prodotto"
+        placeholder="Prezzo (in centesimi)"
+      />
+      <button onclick="creaProdotto()">➕ Aggiungi Prodotto</button>
+
+      <h3>Lista prodotti</h3>
+      <ul id="lista_prodotti"></ul>
+    </div>
+
+    <!-- BRACCIALI -->
+    <div class="box">
+      <h2>🎟️ Bracciali dell'evento</h2>
+
+      <h3>Registra bracciale</h3>
+      <input type="text" id="uid_bracciale" placeholder="UID NFC (opzionale)" />
+      <button onclick="creaBracciale()">➕ Registra Bracciale</button>
+
+      <h3>Lista bracciali</h3>
+      <ul id="lista_bracciali"></ul>
+    </div>
+
+    <!-- REPORT EVENTO -->
+    <div class="box">
+    <h2>📊 Report evento</h2>
+
+    <p>
+        Incasso totale: 
+        <b>€ <span id="rep_incasso">0.00</span></b>
+    </p>
+
+    <h3>🍹 Vendite per prodotto</h3>
+    <table id="rep_prodotti" style="width:100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+        <tr style="text-align:left; border-bottom:1px solid #ccc;">
+            <th>Prodotto</th>
+            <th>Quantità</th>
+            <th>Fatturato €</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h3>👤 Attività per operatore</h3>
+    <table id="rep_operatori" style="width:100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+        <tr style="text-align:left; border-bottom:1px solid #ccc;">
+            <th>Operatore</th>
+            <th>Ruolo</th>
+            <th># Carichi</th>
+            <th># Scarichi</th>
+            <th>Valore caricato €</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h3>📜 Ultimi movimenti</h3>
+    <pre id="rep_log">Nessuna transazione.</pre>
+
+    <button class="export" onclick="scaricaCsvTransazioni()">
+        ⬇️ Scarica CSV transazioni
+    </button>
+    </div>
+
+    <script>
+      let eventoCorrente = null;
+
+      // ===== EVENTI =====
+      async function caricaEventi() {
+        const res = await fetch("/eventi");
+        const eventi = await res.json();
+        const select = document.getElementById("evento_select");
+        select.innerHTML = "";
+
+        eventi.forEach((e) => {
+            const opt = document.createElement("option");
+            opt.value = e.id;
+            opt.innerText = e.nome + (e.pubblico ? " ✅" : " ❌ (nascosto)");
+            select.appendChild(opt);
+        });
+
+        if (eventi.length > 0) {
+            if (!eventoCorrente) {
+            eventoCorrente = eventi[0].id;
+            }
+            select.value = eventoCorrente;
+            applicaTemaDaLista(eventi);
+            caricaTuttoEvento();
+        }
+        }
+
+        function applicaTemaDaLista(eventi) {
+        const evento = eventi.find((e) => String(e.id) === String(eventoCorrente));
+        if (!evento) return;
+        applicaTemaEvento(evento);
+        }
+
+        function applicaTemaEvento(evento) {
+        const accent = evento.accent_color || "#0a84ff";
+        document.documentElement.style.setProperty("--accent-color", accent);
+
+        // variante più scura per hover (semplice: stessa per ora)
+        document.documentElement.style.setProperty(
+            "--accent-color-strong",
+            accent
+        );
+
+        // se in futuro vuoi usare logo:
+        // es. mettere logo in una <img id="logo_evento_admin">
+      }
+
+      function cambiaEvento() {
+        eventoCorrente = document.getElementById("evento_select").value;
+        caricaTuttoEvento();
+      }
+
+      async function creaEvento() {
+        const nome = document.getElementById("nome_evento").value;
+        const data = document.getElementById("data_evento").value;
+        const accent_color =
+            document.getElementById("accent_color_evento").value || "#0a84ff";
+        const logo_url = document.getElementById("logo_evento").value || null;
+
+        await fetch("/eventi", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nome, data_evento: data, accent_color, logo_url })
+        });
+
+        document.getElementById("nome_evento").value = "";
+        document.getElementById("data_evento").value = "";
+        document.getElementById("logo_evento").value = "";
+        document.getElementById("accent_color_evento").value = "#0a84ff";
+
+        await caricaEventi();
+      }
+
+      async function eliminaEvento() {
+        if (!eventoCorrente) return;
+        if (!confirm("Eliminare questo evento?")) return;
+
+        await fetch("/eventi/" + eventoCorrente, { method: "DELETE" });
+        await caricaEventi();
+      }
+
+      // ===== OPERATORI =====
+      async function creaOperatore() {
+        if (!eventoCorrente) return;
+
+        const nome = document.getElementById("nome_operatore").value;
+        const password = document.getElementById("password_operatore").value;
+        const ruolo = document.getElementById("ruolo_operatore").value;
+
+        await fetch("/operatori", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome, password, ruolo, evento_id: eventoCorrente })
+        });
+
+        document.getElementById("nome_operatore").value = "";
+        document.getElementById("password_operatore").value = "";
+
+        caricaOperatori();
+      }
+
+      async function caricaOperatori() {
+        if (!eventoCorrente) return;
+
+        const res = await fetch("/operatori?evento_id=" + eventoCorrente);
+        const ops = await res.json();
+
+        const ul = document.getElementById("lista_operatori");
+        ul.innerHTML = "";
+
+        ops.forEach((o) => {
+          const li = document.createElement("li");
+          li.textContent = `${o.id} - ${o.nome} (${o.ruolo}) `;
+          const btn = document.createElement("button");
+          btn.textContent = "❌";
+          btn.onclick = async () => {
+            if (!confirm("Eliminare questo operatore?")) return;
+            await fetch("/operatori/" + o.id, { method: "DELETE" });
+            caricaOperatori();
+          };
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+      }
+
+      // ===== PRODOTTI =====
+      async function creaProdotto() {
+        if (!eventoCorrente) return;
+
+        const nome = document.getElementById("nome_prodotto").value;
+        const prezzo = document.getElementById("prezzo_prodotto").value;
+
+        await fetch("/prodotti", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome, prezzo, evento_id: eventoCorrente })
+        });
+
+        document.getElementById("nome_prodotto").value = "";
+        document.getElementById("prezzo_prodotto").value = "";
+
+        caricaProdotti();
+      }
+
+      async function caricaProdotti() {
+        if (!eventoCorrente) return;
+
+        const res = await fetch("/prodotti?evento_id=" + eventoCorrente);
+        const prodotti = await res.json();
+
+        const ul = document.getElementById("lista_prodotti");
+        ul.innerHTML = "";
+
+        prodotti.forEach((p) => {
+          const li = document.createElement("li");
+          li.textContent = `${p.id} - ${p.nome} (${(p.prezzo / 100).toFixed(2)} €) `;
+          const btn = document.createElement("button");
+          btn.textContent = "❌";
+          btn.onclick = async () => {
+            if (!confirm("Eliminare questo prodotto?")) return;
+            await fetch("/prodotti/" + p.id, { method: "DELETE" });
+            caricaProdotti();
+          };
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+      }
+
+      // ===== BRACCIALI =====
+      async function creaBracciale() {
+        if (!eventoCorrente) return;
+
+        const uid = document.getElementById("uid_bracciale").value;
+
+        await fetch("/bracciali", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid, evento_id: eventoCorrente })
+        });
+
+        document.getElementById("uid_bracciale").value = "";
+
+        caricaBracciali();
+      }
+
+      async function caricaBracciali() {
+        if (!eventoCorrente) return;
+
+        const res = await fetch("/bracciali?evento_id=" + eventoCorrente);
+        const bracciali = await res.json();
+
+        const ul = document.getElementById("lista_bracciali");
+        ul.innerHTML = "";
+
+        bracciali.forEach((b) => {
+          const li = document.createElement("li");
+          li.textContent = `${b.id} - UID: ${b.uid || "n/a"} - Codice: ${
+            b.codice || "-"
+          } `;
+          const btn = document.createElement("button");
+          btn.textContent = "❌";
+          btn.onclick = async () => {
+            if (!confirm("Eliminare questo bracciale?")) return;
+            await fetch("/bracciali/" + b.id, { method: "DELETE" });
+            caricaBracciali();
+          };
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+      }
+
+      async function exportEvento() {
+        if (!eventoCorrente) {
+            alert("Nessun evento selezionato.");
+            return;
+        }
+
+        // scarica direttamente il CSV
+        window.location.href = "/export/evento/" + eventoCorrente;
+      }
+
+      async function togglePubblicoEvento() {
+        if (!eventoCorrente) return;
+
+        const res = await fetch("/eventi");
+        const eventi = await res.json();
+
+        const evento = eventi.find((e) => e.id == eventoCorrente);
+        if (!evento) return;
+
+        const nuovoStato = !evento.pubblico;
+
+        await fetch("/eventi/" + eventoCorrente + "/pubblico", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pubblico: nuovoStato })
+        });
+
+        alert(
+            nuovoStato
+            ? "✅ Evento ora VISIBILE nello shop"
+            : "❌ Evento ora NASCOSTO dallo shop"
+        );
+
+        caricaEventi();
+      }
+
+      function generaQrEvento() {
+        if (!eventoCorrente) {
+            alert("Seleziona un evento.");
+            return;
+        }
+
+        const url = `${window.location.origin}/shop.html?evento_id=${eventoCorrente}`;
+
+        document.getElementById("qr_evento").innerHTML = "";
+        new QRCode(document.getElementById("qr_evento"), {
+            text: url,
+            width: 220,
+            height: 220
+        });
+
+        document.getElementById("url_evento").innerText = url;
+      }
+
+      async function resetEvento() {
+        if (!eventoCorrente) return;
+
+        const conferma1 = confirm(
+            "⚠️ ATTENZIONE: questo cancellerà TUTTI i crediti, transazioni, ordini e bracciali dell'evento. Continuare?"
+        );
+        if (!conferma1) return;
+
+        const conferma2 = confirm(
+            "⚠️ ULTIMA CONFERMA: OPERAZIONE IRREVERSIBILE. Sei sicuro?"
+        );
+        if (!conferma2) return;
+
+        const res = await fetch("/reset-evento/" + eventoCorrente, {
+            method: "POST"
+        });
+
+        const data = await res.json();
+        alert(data.status || data.error);
+
+        // ricarica tutto l'evento
+        caricaTuttoEvento();
+        }
+
+      // ===== CARICA TUTTO =====
+      function caricaTuttoEvento() {
+        caricaOperatori();
+        caricaProdotti();
+        caricaBracciali();
+        caricaReportEvento();
+      }
+
+      function formatEuroDaCentesimi(cents) {
+        return (Number(cents || 0) / 100).toFixed(2);
+        }
+
+        // CARICA REPORT COMPLETO PER L'EVENTO CORRENTE
+        async function caricaReportEvento() {
+        if (!eventoCorrente) return;
+
+        // 1) INCASSO TOTALE
+        try {
+            const resInc = await fetch("/dashboard/incasso/" + eventoCorrente);
+            const dataInc = await resInc.json();
+            document.getElementById("rep_incasso").innerText = formatEuroDaCentesimi(
+            dataInc.totale || 0
+            );
+        } catch (err) {
+            console.error(err);
+            document.getElementById("rep_incasso").innerText = "0.00";
+        }
+
+        // 2) VENDITE PER PRODOTTO
+        try {
+            const resProd = await fetch("/dashboard/prodotti/" + eventoCorrente);
+            const lista = await resProd.json();
+
+            const tbody = document
+            .getElementById("rep_prodotti")
+            .querySelector("tbody");
+            tbody.innerHTML = "";
+
+            if (!Array.isArray(lista) || lista.length === 0) {
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.colSpan = 3;
+            td.innerText = "Nessuna vendita registrata.";
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            } else {
+            lista.forEach((p) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                <td>${p.nome}</td>
+                <td>${p.quantita}</td>
+                <td>€ ${formatEuroDaCentesimi(p.fatturato)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            }
+        } catch (err) {
+            console.error(err);
+        }
+
+        // 3) LOG ULTIMI MOVIMENTI
+        try {
+            const resLog = await fetch("/dashboard/log/" + eventoCorrente);
+            const log = await resLog.json();
+
+            if (!Array.isArray(log) || log.length === 0) {
+            document.getElementById("rep_log").innerText = "Nessuna transazione.";
+            } else {
+            const testo = log
+                .slice(0, 30) // limitiamo agli ultimi 30 per non esagerare
+                .map((r) => {
+                return `${r.data} - ${r.tipo} x${r.quantita} ${r.prodotto}`;
+                })
+                .join("\n");
+
+            document.getElementById("rep_log").innerText = testo;
+            }
+        } catch (err) {
+            console.error(err);
+            document.getElementById("rep_log").innerText = "Errore lettura log.";
+        }
+
+          // 4) ATTIVITÀ PER OPERATORE
+            try {
+                const resOp = await fetch("/dashboard/operatori/" + eventoCorrente);
+                const opList = await resOp.json();
+
+                const tbodyOp = document
+                .getElementById("rep_operatori")
+                .querySelector("tbody");
+                tbodyOp.innerHTML = "";
+
+                if (!Array.isArray(opList) || opList.length === 0) {
+                const tr = document.createElement("tr");
+                const td = document.createElement("td");
+                td.colSpan = 5;
+                td.innerText = "Nessuna attività operatore registrata.";
+                tr.appendChild(td);
+                tbodyOp.appendChild(tr);
+                } else {
+                opList.forEach((o) => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                    <td>${o.nome}</td>
+                    <td>${o.ruolo}</td>
+                    <td>${o.num_carichi}</td>
+                    <td>${o.num_scarichi}</td>
+                    <td>€ ${formatEuroDaCentesimi(o.valore_caricato)}</td>
+                    `;
+                    tbodyOp.appendChild(tr);
+                });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // SCARICA CSV TRANSIZIONI
+        function scaricaCsvTransazioni() {
+        if (!eventoCorrente) {
+            alert("Seleziona un evento.");
+            return;
+        }
+        window.open("/dashboard/log-csv/" + eventoCorrente, "_blank");
+      }
+
+      // AVVIO
+      caricaEventi();
+    </script>
+  </body>
+</html>

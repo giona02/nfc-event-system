@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Shop Eventi</title>
+    <link rel="stylesheet" href="style.css" />
+
+    <style>
+      .shop-container {
+        max-width: 520px;
+        margin: auto;
+      }
+
+      .shop-prodotti {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .shop-prodotti button {
+        font-size: 16px;
+        padding: 14px;
+      }
+
+      .shop-cart {
+        margin-top: 20px;
+        background: #f4f4f4;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid #e5e5ea;
+      }
+
+      .shop-cart pre {
+        background: #fff;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid #e5e5ea;
+      }
+
+      select {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 10px;
+        border: 1px solid #d1d1d6;
+      }
+
+      .totale {
+        font-size: 18px;
+        font-weight: bold;
+        text-align: right;
+        margin-top: 8px;
+      }
+
+      .evento-label {
+        font-size: 14px;
+        margin-bottom: 4px;
+        color: #3a3a3c;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="shop-container">
+      <h1>🛒 Shop Eventi</h1>
+
+      <!-- ✅ SELEZIONE EVENTO -->
+      <div class="box">
+        <h3>🎉 Seleziona evento</h3>
+        <p class="evento-label">
+          Se arrivi da un QR, l'evento è già selezionato.
+        </p>
+        <select id="evento_select" onchange="cambiaEvento()"></select>
+      </div>
+
+      <!-- ✅ CODICE BRACCIALE -->
+      <div class="box">
+        <h3>🎟️ Inserisci codice braccialetto</h3>
+        <input
+          type="text"
+          id="codice_input"
+          maxlength="6"
+          placeholder="ABC123"
+          class="code-input"
+        />
+        <button onclick="verificaCodice()">✅ Verifica</button>
+
+        <p id="msg"></p>
+      </div>
+
+      <!-- ✅ PRODOTTI -->
+      <div class="box">
+        <h3>🍹 Prodotti</h3>
+        <div id="lista_prodotti_shop" class="shop-prodotti"></div>
+      </div>
+
+      <!-- ✅ CARRELLO -->
+      <div class="box">
+        <h3>🧾 Carrello</h3>
+        <pre id="carrello">Carrello vuoto.</pre>
+        <div class="totale">Totale: € <span id="totale_euro">0.00</span></div>
+        <button onclick="confermaRicarica()">✅ Conferma ricarica</button>
+      </div>
+    </div>
+
+    <script>
+      // Leggo ?evento_id= dall'URL (per QR)
+      const params = new URLSearchParams(window.location.search);
+      let eventoCorrente = params.get("evento_id"); // può essere null
+
+      let codiceBracciale = null;
+      let carrello = {};
+      let prodottiEvento = [];
+      let listaEventiPubblici = [];
+
+      // ==========================
+      // ✅ FUNZIONE TEMA EVENTO (accent color)
+      // ==========================
+      function applicaTemaDaLista(eventi) {
+        const evento = eventi.find(
+          (e) => String(e.id) === String(eventoCorrente)
+        );
+        if (!evento) return;
+
+        const accent = evento.accent_color || "#0a84ff";
+        document.documentElement.style.setProperty("--accent-color", accent);
+        document.documentElement.style.setProperty(
+          "--accent-color-strong",
+          accent
+        );
+      }
+
+      // ==========================
+      // ✅ CARICA EVENTI PUBBLICI
+      // ==========================
+      async function caricaEventiPubblici() {
+        const res = await fetch("/eventi?solo_pubblici=true");
+        const eventi = await res.json();
+        listaEventiPubblici = eventi;
+
+        const select = document.getElementById("evento_select");
+        select.innerHTML = "";
+
+        eventi.forEach((e) => {
+          const opt = document.createElement("option");
+          opt.value = e.id;
+          opt.innerText = e.nome;
+          select.appendChild(opt);
+        });
+
+        // Se l'evento è stato passato da URL, lo forzo
+        if (eventoCorrente) {
+          select.value = eventoCorrente;
+        } else if (eventi.length > 0) {
+          eventoCorrente = eventi[0].id;
+          select.value = eventoCorrente;
+        }
+
+        // Applica colore tema
+        if (eventi.length > 0 && eventoCorrente) {
+          applicaTemaDaLista(eventi);
+        }
+      }
+
+      function cambiaEvento() {
+        eventoCorrente = document.getElementById("evento_select").value;
+        codiceBracciale = null;
+        carrello = {};
+        aggiornaCarrello();
+        document.getElementById("lista_prodotti_shop").innerHTML = "";
+        document.getElementById("msg").innerText =
+          "Evento selezionato. Inserisci codice bracciale.";
+
+        // aggiorna il tema in base all'evento scelto
+        applicaTemaDaLista(listaEventiPubblici);
+      }
+
+      // ==========================
+      // ✅ VERIFICA CODICE BRACCIALE
+      // ==========================
+      async function verificaCodice() {
+        const codice = document
+          .getElementById("codice_input")
+          .value.trim()
+          .toUpperCase();
+
+        if (!codice || codice.length !== 6) {
+          alert("Inserisci un codice valido (6 caratteri).");
+          return;
+        }
+
+        const res = await fetch(
+          "/bracciali/codice/" +
+            encodeURIComponent(codice) +
+            "?evento_id=" +
+            eventoCorrente
+        );
+
+        const data = await res.json();
+
+        if (!data.id) {
+          document.getElementById("msg").innerText =
+            data.error || "Bracciale non valido ❌";
+          codiceBracciale = null;
+          return;
+        }
+
+        codiceBracciale = codice;
+        document.getElementById("msg").innerText =
+          "✅ Bracciale valido, puoi acquistare!";
+
+        carrello = {};
+        aggiornaCarrello();
+        caricaProdottiShop();
+      }
+
+      // ==========================
+      // ✅ CARICA PRODOTTI EVENTO
+      // ==========================
+      async function caricaProdottiShop() {
+        const res = await fetch("/prodotti?evento_id=" + eventoCorrente);
+        prodottiEvento = await res.json();
+
+        const container = document.getElementById("lista_prodotti_shop");
+        container.innerHTML = "";
+
+        prodottiEvento.forEach((p) => {
+          const btn = document.createElement("button");
+          btn.innerText = `${p.nome}\n€ ${(p.prezzo / 100).toFixed(2)}`;
+          btn.onclick = () => aggiungiAlCarrello(p.id);
+
+          container.appendChild(btn);
+        });
+      }
+
+      // ==========================
+      // ✅ AGGIUNGI AL CARRELLO
+      // ==========================
+      function aggiungiAlCarrello(prodottoId) {
+        carrello[prodottoId] = (carrello[prodottoId] || 0) + 1;
+        aggiornaCarrello();
+      }
+
+      // ==========================
+      // ✅ AGGIORNA CARRELLO + TOTALE €
+      // ==========================
+      function aggiornaCarrello() {
+        const pre = document.getElementById("carrello");
+        const totaleSpan = document.getElementById("totale_euro");
+
+        if (Object.keys(carrello).length === 0) {
+          pre.innerText = "Carrello vuoto.";
+          totaleSpan.innerText = "0.00";
+          return;
+        }
+
+        let testo = "";
+        let totale = 0;
+
+        for (const id in carrello) {
+          const prodotto = prodottiEvento.find((p) => p.id == id);
+          if (!prodotto) continue;
+
+          const qta = carrello[id];
+          const prezzoEuro = prodotto.prezzo / 100;
+          const subtotale = prezzoEuro * qta;
+
+          totale += subtotale;
+          testo += `${prodotto.nome} x${qta} = € ${subtotale.toFixed(2)}\n`;
+        }
+
+        pre.innerText = testo;
+        totaleSpan.innerText = totale.toFixed(2);
+      }
+
+      // ==========================
+      // ✅ CONFERMA RICARICA
+      // ==========================
+      async function confermaRicarica() {
+        if (!codiceBracciale) {
+          alert("Inserisci e verifica il codice del bracciale prima.");
+          return;
+        }
+
+        if (Object.keys(carrello).length === 0) {
+          alert("Carrello vuoto.");
+          return;
+        }
+
+        const prodotti = Object.entries(carrello).map(([id, quantita]) => ({
+          prodotto_id: Number(id),
+          quantita
+        }));
+
+        const res = await fetch("/ricarica-diretta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            codice: codiceBracciale,
+            evento_id: eventoCorrente,
+            prodotti
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+
+        alert("✅ Ricarica effettuata con successo!");
+
+        // reset
+        carrello = {};
+        aggiornaCarrello();
+        document.getElementById("msg").innerText = "";
+        document.getElementById("codice_input").value = "";
+        codiceBracciale = null;
+      }
+
+      // ==========================
+      // ✅ AVVIO
+      // ==========================
+      caricaEventiPubblici();
+    </script>
+  </body>
+</html>

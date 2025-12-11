@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Test NFC</title>
+  </head>
+  <body>
+    <h1>📲 LETTURA NFC</h1>
+
+    <button onclick="leggiNfc()">📡 Leggi Bracciale</button>
+
+    <h2>UID Letto:</h2>
+    <p id="uid">---</p>
+
+    <script>
+      async function leggiNfc() {
+        if (!("NDEFReader" in window)) {
+          alert("NFC non supportato su questo dispositivo/browser");
+          return;
+        }
+
+        try {
+          const reader = new NDEFReader();
+          await reader.scan();
+
+          alert("Avvicina il bracciale al tablet...");
+
+          reader.onreading = (event) => {
+            const uid = event.serialNumber || "UID non disponibile";
+            document.getElementById("uid").innerText = uid;
+          };
+        } catch (err) {
+          console.error(err);
+          alert("Errore NFC: " + err);
+        }
+      }
+    </script>
+  </body>
+</html>

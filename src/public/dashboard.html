@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dashboard Evento</title>
+  </head>
+  <body>
+    <h1>📊 DASHBOARD EVENTO</h1>
+
+    <h2>Evento</h2>
+    <select id="evento" onchange="caricaDashboard()"></select>
+
+    <h2>💰 Incasso totale</h2>
+    <h3 id="incasso">---</h3>
+
+    <h2>🍹 Vendite per prodotto</h2>
+    <pre id="prodotti"></pre>
+
+    <h2>🕒 Log transazioni</h2>
+    <pre id="log"></pre>
+
+    <script>
+      async function caricaEventi() {
+        const res = await fetch("/eventi");
+        const eventi = await res.json();
+
+        const select = document.getElementById("evento");
+        eventi.forEach((e) => {
+          const opt = document.createElement("option");
+          opt.value = e.id;
+          opt.innerText = e.nome;
+          select.appendChild(opt);
+        });
+
+        caricaDashboard();
+      }
+
+      async function caricaDashboard() {
+        const eventoId = document.getElementById("evento").value;
+
+        // INCASSO
+        const incassoRes = await fetch(
+          "/dashboard/incasso/" + eventoId
+        );
+        const incassoData = await incassoRes.json();
+        document.getElementById("incasso").innerText =
+          (incassoData.totale / 100).toFixed(2) + " €";
+
+        // PRODOTTI
+        const prodRes = await fetch(
+          "/dashboard/prodotti/" + eventoId
+        );
+        const prodData = await prodRes.json();
+
+        document.getElementById("prodotti").innerText = prodData
+          .map(
+            (p) =>
+              `${p.nome}: ${p.quantita} pezzi → ${(p.fatturato / 100).toFixed(
+                2
+              )} €`
+          )
+          .join("\n");
+
+        // LOG
+        const logRes = await fetch(
+          "/dashboard/log/" + eventoId
+        );
+        const logData = await logRes.json();
+
+        document.getElementById("log").innerText = logData
+          .map(
+            (l) =>
+              `${l.data} — ${l.tipo.toUpperCase()} — ${l.prodotto} x${
+                l.quantita
+              }`
+          )
+          .join("\n");
+      }
+
+      caricaEventi();
+    </script>
+  </body>
+</html>

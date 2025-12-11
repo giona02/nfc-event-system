@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bar NFC</title>
+    <link rel="stylesheet" href="style.css" />
+
+    <script>
+      // 🔐 PROTEZIONE ANTI-LOGOUT CON RIPRISTINO
+      let operatore = JSON.parse(localStorage.getItem("operatore"));
+
+      // backup di sicurezza
+      if (operatore) {
+        localStorage.setItem("operatore_backup", JSON.stringify(operatore));
+      } else {
+        // tentativo di ripristino automatico
+        const backup = localStorage.getItem("operatore_backup");
+        if (backup) {
+          operatore = JSON.parse(backup);
+          localStorage.setItem("operatore", backup);
+          console.log("✅ Operatore ripristinato automaticamente");
+        }
+      }
+
+      // controllo ruolo
+      if (!operatore || operatore.ruolo !== "bar") {
+        window.location.href = "login.html";
+      }
+    </script>
+  </head>
+
+  <body>
+    <div class="top-bar">
+      <div class="top-left">
+        <div class="top-title">NFC Event System</div>
+        <div class="top-sub">
+          Evento: <b><span id="nome_evento_label">---</span></b> |
+          Operatore: <b><span id="nome_operatore_label">---</span></b>
+          (<span id="ruolo_operatore_label"></span>)
+        </div>
+      </div>
+
+      <div class="top-right">
+        <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+      </div>
+    </div>
+
+    <p
+      id="net_status"
+      style="font-size: 13px; opacity: 0.8; margin: 6px 4px 12px;"
+    >
+      Stato: 🟢 Online
+    </p>
+
+    <div class="box">
+      <h2>📲 Bracciale</h2>
+
+      <button onclick="leggiNfc()">📡 Leggi Bracciale NFC</button>
+
+      <p>UID: <span id="uid_label">---</span></p>
+      <p>Bracciale ID: <span id="bracciale_label">---</span></p>
+
+      <h3>Codice manuale</h3>
+      <input
+        type="text"
+        id="codice_bracciale_bar"
+        maxlength="6"
+        placeholder="ABC123"
+        class="code-input"
+      />
+      <button class="code-btn" onclick="usaCodiceBar()">🎟️ Usa codice</button>
+
+      <h3>Saldo prodotti</h3>
+      <pre id="saldo">---</pre>
+
+      <p id="msg"></p>
+    </div>
+
+    <div class="box">
+      <h2>🍺 Scarica prodotti</h2>
+
+      <div class="fast-mode-row">
+        <label class="switch">
+          <input
+            type="checkbox"
+            id="fast_mode_toggle"
+            onchange="toggleFastMode()"
+          />
+          <span class="slider"></span>
+        </label>
+        <span class="fast-mode-label">
+          Modalità veloce (tap = scarico immediato)
+        </span>
+      </div>
+
+      <div id="lista_prodotti_bar"></div>
+    </div>
+
+    <script>
+      let eventoCorrente = operatore.evento_id;
+      let braccialeId = null;
+      let modalitaVeloce = false;
+
+      // ====== OFFLINE LIGHT: CODA OPERAZIONI IN LOCALE ======
+      let pendingOps = JSON.parse(localStorage.getItem("pending_ops") || "[]");
+
+      function savePendingOps() {
+        localStorage.setItem("pending_ops", JSON.stringify(pendingOps));
+      }
+
+      function updateNetStatus() {
+        const el = document.getElementById("net_status");
+        if (!el) return;
+
+        const queued = pendingOps.length;
+
+        if (navigator.onLine) {
+          el.innerText = queued
+            ? `Stato: 🟡 Online (in coda ${queued} operazioni)`
+            : "Stato: 🟢 Online";
+        } else {
+          el.innerText = `Stato: 🔴 Offline (in coda ${queued} operazioni)`;
+        }
+      }
+
+      async function syncPendingOps() {
+        updateNetStatus();
+        if (!navigator.onLine || pendingOps.length === 0) return;
+
+        const still = [];
+
+        for (const op of pendingOps) {
+          try {
+            const res = await fetch(op.url, op.options);
+            const data = await res.json();
+
+            if (data.error) {
+              console.error("Errore sync op:", data.error);
+              still.push(op); // la tengo in coda
+            }
+          } catch (e) {
+            console.error("Errore rete sync:", e);
+            still.push(op);
+            break; // smetto, riproverò quando torna la rete
+          }
+        }
+
+        pendingOps = still;
+        savePendingOps();
+        updateNetStatus();
+      }
+
+      // aggiorna quando cambia la rete
+      window.addEventListener("online", syncPendingOps);
+      window.addEventListener("offline", updateNetStatus);
+
+      function toggleFastMode() {
+        const chk = document.getElementById("fast_mode_toggle");
+        modalitaVeloce = chk.checked;
+
+        const msg = document.getElementById("msg");
+        if (modalitaVeloce) {
+          msg.innerText =
+            "⚡ Modalità veloce attiva: tap sul prodotto = scarico immediato.";
+        } else {
+          msg.innerText =
+            "Modalità normale: ad ogni scarico viene chiesta conferma.";
+        }
+      }
+
+      // ✅ MOSTRA DATI OPERATORE NELLA TOP-BAR
+      document.getElementById("nome_operatore_label").innerText =
+        operatore.nome;
+      document.getElementById("ruolo_operatore_label").innerText =
+        operatore.ruolo;
+
+      // ✅ CARICA NOME EVENTO + TEMA DAL DB
+      async function caricaNomeEvento() {
+        const res = await fetch("/eventi");
+        const eventi = await res.json();
+
+        const evento = eventi.find(
+          (e) => String(e.id) === String(eventoCorrente)
+        );
+
+        if (evento) {
+          document.getElementById("nome_evento_label").innerText = evento.nome;
+
+          const accent = evento.accent_color || "#0a84ff";
+          document.documentElement.style.setProperty(
+            "--accent-color",
+            accent
+          );
+          document.documentElement.style.setProperty(
+            "--accent-color-strong",
+            accent
+          );
+        } else {
+          document.getElementById("nome_evento_label").innerText =
+            "Evento sconosciuto";
+        }
+      }
+
+      caricaNomeEvento();
+
+      // ==============================
+      // ✅ NFC
+      // ==============================
+      async function leggiNfc() {
+        if (!("NDEFReader" in window)) {
+          alert("NFC non supportato su questo dispositivo.");
+          return;
+        }
+
+        try {
+          const reader = new NDEFReader();
+          await reader.scan();
+          alert("Avvicina il bracciale...");
+
+          reader.onreading = async (event) => {
+            const uid = event.serialNumber;
+            document.getElementById("uid_label").innerText = uid;
+
+            const res = await fetch(
+              "/bracciali/uid/" +
+                encodeURIComponent(uid) +
+                "?evento_id=" +
+                eventoCorrente
+            );
+
+            const data = await res.json();
+
+            if (!data.id) {
+              document.getElementById("msg").innerText =
+                "Bracciale non trovato ❌";
+              return;
+            }
+
+            braccialeId = data.id;
+            document.getElementById("bracciale_label").innerText = braccialeId;
+            document.getElementById("msg").innerText = "Bracciale pronto ✅";
+
+            await aggiornaSaldo();
+          };
+        } catch (err) {
+          alert("Errore NFC: " + err);
+        }
+      }
+
+      // ==============================
+      // ✅ CODICE MANUALE
+      // ==============================
+      async function usaCodiceBar() {
+        const input = document
+          .getElementById("codice_bracciale_bar")
+          .value.trim()
+          .toUpperCase();
+
+        if (!input || input.length !== 6) {
+          alert("Inserisci un codice valido (6 caratteri).");
+          return;
+        }
+
+        const res = await fetch(
+          "/bracciali/codice/" +
+            encodeURIComponent(input) +
+            "?evento_id=" +
+            eventoCorrente
+        );
+
+        const data = await res.json();
+
+        if (!data.id) {
+          document.getElementById("msg").innerText =
+            data.error || "Bracciale non trovato ❌";
+          return;
+        }
+
+        braccialeId = data.id;
+        document.getElementById("uid_label").innerText = "(da codice)";
+        document.getElementById("bracciale_label").innerText = braccialeId;
+        document.getElementById("msg").innerText = "Bracciale pronto ✅";
+
+        await aggiornaSaldo();
+      }
+
+      // ==============================
+      // ✅ CARICA PRODOTTI (GRID)
+      // ==============================
+      async function caricaProdottiBar() {
+        const res = await fetch("/prodotti?evento_id=" + eventoCorrente);
+        const prodotti = await res.json();
+
+        const container = document.getElementById("lista_prodotti_bar");
+        container.innerHTML = "";
+
+        prodotti.forEach((p) => {
+          const btn = document.createElement("button");
+          btn.innerText = `➖ ${p.nome}`;
+          btn.dataset.prodottoId = p.id;
+          btn.onclick = () => scarica(p.id);
+
+          container.appendChild(btn);
+        });
+      }
+
+      // ==============================
+      // ✅ AGGIORNA SALDO + COLORI
+      // ==============================
+      async function aggiornaSaldo() {
+        if (!braccialeId) return;
+
+        const res = await fetch("/saldo/" + braccialeId);
+        const data = await res.json();
+
+        // reset colori
+        document
+          .querySelectorAll("#lista_prodotti_bar button")
+          .forEach((btn) => btn.classList.remove("prodotto-attivo"));
+
+        if (!Array.isArray(data) || data.length === 0) {
+          document.getElementById("saldo").innerText =
+            "Nessun credito disponibile.";
+          return;
+        }
+
+        const testo = data.map((r) => `${r.nome}: ${r.quantita}`).join("\n");
+        document.getElementById("saldo").innerText = testo;
+
+        // colora pulsanti verdi se presenti
+        document
+          .querySelectorAll("#lista_prodotti_bar button")
+          .forEach((btn) => {
+            const prodottoId = btn.dataset.prodottoId;
+
+            const trovato = data.find(
+              (p) =>
+                String(p.prodotto_id) === String(prodottoId) && p.quantita > 0
+            );
+
+            if (trovato) {
+              btn.classList.add("prodotto-attivo");
+            }
+          });
+      }
+
+      // ==============================
+      // ✅ SCARICA PRODOTTO (con modalità veloce + offline light)
+      // ==============================
+      async function scarica(prodottoId) {
+        if (!braccialeId) {
+          alert("Prima leggi un bracciale.");
+          return;
+        }
+
+        const btn = document.querySelector(
+          `#lista_prodotti_bar button[data-prodotto-id="${prodottoId}"]`
+        );
+        const nomeProdotto = btn
+          ? btn.innerText.replace("➖ ", "")
+          : "prodotto";
+
+        // Se NON siamo in modalità veloce → chiedi conferma
+        if (!modalitaVeloce) {
+          const conferma = confirm(
+            `Confermi lo scarico di:\n"${nomeProdotto}" ?`
+          );
+          if (!conferma) {
+            document.getElementById("msg").innerText = "Operazione annullata.";
+            return;
+          }
+        }
+
+        const body = {
+          bracciale_id: braccialeId,
+          prodotto_id: prodottoId,
+          operatore_id: operatore.id
+        };
+
+        const op = {
+          url: "/scarica",
+          options: {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          }
+        };
+
+        try {
+          const res = await fetch(op.url, op.options);
+          const data = await res.json();
+
+          document.getElementById("msg").innerText =
+            data.status || data.error || "Errore";
+
+          if (data.status) {
+            // ✅ FLASH VERDE SU SCARICO OK
+            document.body.classList.add("flash-success");
+            setTimeout(() => {
+              document.body.classList.remove("flash-success");
+            }, 600);
+          } else {
+            // ❌ FLASH ROSSO + SHAKE SU ERRORE
+            document.body.classList.add("flash-error", "shake");
+            setTimeout(() => {
+              document.body.classList.remove("flash-error", "shake");
+            }, 600);
+          }
+        } catch (e) {
+          console.warn("Rete non disponibile, scarico messo in coda:", op);
+          pendingOps.push(op);
+          savePendingOps();
+          document.getElementById("msg").innerText =
+            "⚠️ Rete assente: scarico in coda, verrà applicato appena torna la connessione.";
+        }
+
+        await syncPendingOps();
+        await aggiornaSaldo();
+      }
+
+      function logout() {
+        if (!confirm("Vuoi uscire?")) return;
+        localStorage.removeItem("operatore");
+        localStorage.removeItem("operatore_backup");
+        window.location.href = "login.html";
+      }
+
+      // ==============================
+      // AVVIO
+      // ==============================
+      caricaProdottiBar();
+      updateNetStatus();
+      syncPendingOps();
+    </script>
+  </body>
+</html>

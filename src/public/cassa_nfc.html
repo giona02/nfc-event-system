@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cassa NFC</title>
+    <link rel="stylesheet" href="style.css" />
+
+    <script>
+      // 🔐 PROTEZIONE SESSIONE CASSA CON BACKUP
+      let operatore = JSON.parse(localStorage.getItem("operatore"));
+
+      // Salva backup sempre
+      if (operatore) {
+        localStorage.setItem("operatore_backup", JSON.stringify(operatore));
+      } else {
+        // Ripristino automatico se esiste backup
+        const backup = localStorage.getItem("operatore_backup");
+        if (backup) {
+          operatore = JSON.parse(backup);
+          localStorage.setItem("operatore", backup);
+          console.log("✅ Sessione CASSA ripristinata");
+        }
+      }
+
+      // Controllo finale RUOLO
+      if (!operatore || operatore.ruolo !== "cassa") {
+        window.location.href = "login.html";
+      }
+    </script>
+  </head>
+
+  <body>
+    <!-- TOP BAR -->
+    <div class="top-bar">
+      <div class="top-left">
+        <div class="top-title">NFC Event System</div>
+        <div class="top-sub">
+          Evento: <b><span id="nome_evento_label">---</span></b> |
+          Operatore: <b><span id="nome_operatore_label">---</span></b>
+          (<span id="ruolo_operatore_label"></span>)
+        </div>
+      </div>
+
+      <div class="top-right">
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <p id="net_status" style="font-size: 13px; opacity: 0.8; margin: 6px 4px 12px;">
+      Stato: 🟢 Online
+    </p>
+
+    <!-- ========================= -->
+    <!-- BRACCIALE -->
+    <!-- ========================= -->
+    <div class="box">
+      <h2>📲 Bracciale</h2>
+
+      <button onclick="leggiNfc()">📡 Leggi Bracciale NFC</button>
+
+      <p>UID: <span id="uid_label">---</span></p>
+      <p>Bracciale ID: <span id="bracciale_label">---</span></p>
+
+      <h3>Codice manuale</h3>
+      <input
+        type="text"
+        id="codice_bracciale_cassa"
+        maxlength="6"
+        placeholder="ABC123"
+        class="code-input"
+      />
+      <button class="code-btn" onclick="usaCodiceCassa()">🎟️ Usa codice</button>
+
+      <h3>📦 Prodotti già caricati</h3>
+      <pre id="saldo_cassa">---</pre>
+
+      <p id="msg"></p>
+    </div>
+
+    <!-- ========================= -->
+    <!-- PRODOTTI -->
+    <!-- ========================= -->
+    <div class="box">
+      <h2>🍹 Carica prodotti</h2>
+
+      <h3>🧾 Anteprima carico</h3>
+      <pre id="anteprima_bozza">Nessun prodotto.</pre>
+      <p><b>Totale carico: € <span id="totale_bozza">0.00</span></b></p>
+
+      <div id="lista_prodotti_cassa"></div>
+
+      <button onclick="salvaBozza()">✅ SALVA</button>
+    </div>
+
+    <script>
+      let eventoCorrente = operatore.evento_id;
+      let braccialeId = null;
+
+      let bozzaCarico = {};
+      let bozzaBloccata = false;
+
+      // ====== OFFLINE LIGHT: CODA OPERAZIONI IN LOCALE ======
+      let pendingOps = JSON.parse(localStorage.getItem("pending_ops") || "[]");
+
+      function savePendingOps() {
+        localStorage.setItem("pending_ops", JSON.stringify(pendingOps));
+      }
+
+      function updateNetStatus() {
+        const el = document.getElementById("net_status");
+        if (!el) return;
+
+        const queued = pendingOps.length;
+
+        if (navigator.onLine) {
+          el.innerText = queued
+            ? `Stato: 🟡 Online (in coda ${queued} operazioni)`
+            : "Stato: 🟢 Online";
+        } else {
+          el.innerText = `Stato: 🔴 Offline (in coda ${queued} operazioni)`;
+        }
+      }
+
+      async function syncPendingOps() {
+        updateNetStatus();
+        if (!navigator.onLine || pendingOps.length === 0) return;
+
+        const still = [];
+
+        for (const op of pendingOps) {
+          try {
+            const res = await fetch(op.url, op.options);
+            const data = await res.json();
+
+            if (data.error) {
+              console.error("Errore sync op:", data.error);
+              still.push(op); // la tengo in coda
+            }
+          } catch (e) {
+            console.error("Errore rete sync:", e);
+            still.push(op);
+            break; // smetto, riproverò quando torna la rete
+          }
+        }
+
+        pendingOps = still;
+        savePendingOps();
+        updateNetStatus();
+      }
+
+      // aggiorna quando cambia la rete
+      window.addEventListener("online", syncPendingOps);
+      window.addEventListener("offline", updateNetStatus);
+
+      // ✅ MOSTRA DATI OPERATORE NELLA TOP-BAR
+      document.getElementById("nome_operatore_label").innerText = operatore.nome;
+      document.getElementById("ruolo_operatore_label").innerText = operatore.ruolo;
+
+      
+
+      // ✅ CARICA NOME EVENTO DAL DB
+      async function caricaNomeEvento() {
+        const res = await fetch("/eventi");
+        const eventi = await res.json();
+
+        const evento = eventi.find(
+          (e) => String(e.id) === String(eventoCorrente)
+        );
+
+        if (evento) {
+          document.getElementById("nome_evento_label").innerText = evento.nome;
+
+          const accent = evento.accent_color || "#0a84ff";
+          document.documentElement.style.setProperty("--accent-color", accent);
+          document.documentElement.style.setProperty(
+            "--accent-color-strong",
+            accent
+          );
+        } else {
+          document.getElementById("nome_evento_label").innerText =
+            "Evento sconosciuto";
+        }
+      }
+
+      caricaNomeEvento();
+
+      // ==============================
+      // ✅ NFC
+      // ==============================
+      async function leggiNfc() {
+        if (!("NDEFReader" in window)) {
+          alert("NFC non supportato.");
+          return;
+        }
+
+        const reader = new NDEFReader();
+        await reader.scan();
+
+        reader.onreading = async (event) => {
+          const uid = event.serialNumber;
+          document.getElementById("uid_label").innerText = uid;
+
+          const res = await fetch(
+            "/bracciali/uid/" + uid + "?evento_id=" + eventoCorrente
+          );
+
+          const data = await res.json();
+
+          if (!data.id) {
+            document.getElementById("msg").innerText =
+              "Bracciale non trovato ❌";
+            return;
+          }
+
+          braccialeId = data.id;
+          bozzaCarico = {};
+          bozzaBloccata = false;
+
+          document.getElementById("bracciale_label").innerText = braccialeId;
+          document.getElementById("msg").innerText = "Bracciale pronto ✅";
+
+          aggiornaSaldoCassa();
+          aggiornaColoriCassa();
+          aggiornaAnteprimaBozza();
+        };
+      }
+
+      // ==============================
+      // ✅ CODICE MANUALE
+      // ==============================
+      async function usaCodiceCassa() {
+        const input = document
+          .getElementById("codice_bracciale_cassa")
+          .value.trim()
+          .toUpperCase();
+
+        if (!input || input.length !== 6) {
+          alert("Codice non valido.");
+          return;
+        }
+
+        const res = await fetch(
+          "/bracciali/codice/" + input + "?evento_id=" + eventoCorrente
+        );
+
+        const data = await res.json();
+
+        if (!data.id) {
+          document.getElementById("msg").innerText =
+            data.error || "Bracciale non trovato ❌";
+          return;
+        }
+
+        braccialeId = data.id;
+        bozzaCarico = {};
+        bozzaBloccata = false;
+
+        document.getElementById("uid_label").innerText = "(da codice)";
+        document.getElementById("bracciale_label").innerText = braccialeId;
+        document.getElementById("msg").innerText = "Bracciale pronto ✅";
+
+        aggiornaSaldoCassa();
+        aggiornaColoriCassa();
+        aggiornaAnteprimaBozza();
+      }
+
+      // ==============================
+      // ✅ PRODOTTI
+      // ==============================
+      async function caricaProdottiCassa() {
+        const res = await fetch("/prodotti?evento_id=" + eventoCorrente);
+        const prodotti = await res.json();
+
+        const container = document.getElementById("lista_prodotti_cassa");
+        container.innerHTML = "";
+
+        prodotti.forEach((p) => {
+          const wrapper = document.createElement("div");
+
+          const btnPlus = document.createElement("button");
+          btnPlus.innerText = `➕ ${p.nome}`;
+          btnPlus.dataset.prodottoId = p.id;
+          btnPlus.onclick = () => aggiungi(p.id);
+
+          const btnMinus = document.createElement("button");
+          btnMinus.innerText = "➖";
+          btnMinus.className = "minus-btn";
+          btnMinus.onclick = () => togli(p.id);
+
+          wrapper.appendChild(btnPlus);
+          wrapper.appendChild(btnMinus);
+          container.appendChild(wrapper);
+        });
+      }
+
+      function aggiungi(prodottoId) {
+        if (!braccialeId || bozzaBloccata) return;
+
+        bozzaCarico[prodottoId] = (bozzaCarico[prodottoId] || 0) + 1;
+        aggiornaAnteprimaBozza();
+      }
+
+      function togli(prodottoId) {
+        if (!bozzaCarico[prodottoId] || bozzaBloccata) return;
+
+        bozzaCarico[prodottoId]--;
+
+        if (bozzaCarico[prodottoId] <= 0) {
+          delete bozzaCarico[prodottoId];
+        }
+
+        aggiornaAnteprimaBozza();
+      }
+
+      // ==============================
+      // ✅ ANTEPRIMA CARICO CON PREZZI E TOTALE
+      // ==============================
+      async function aggiornaAnteprimaBozza() {
+        const pre = document.getElementById("anteprima_bozza");
+        const spanTot = document.getElementById("totale_bozza");
+
+        if (Object.keys(bozzaCarico).length === 0) {
+          pre.innerText = "Nessun prodotto.";
+          if (spanTot) spanTot.innerText = "0.00";
+          return;
+        }
+
+        const res = await fetch("/prodotti?evento_id=" + eventoCorrente);
+        const prodotti = await res.json();
+
+        let testo = "";
+        let totale = 0;
+
+        for (const pid in bozzaCarico) {
+          const p = prodotti.find((x) => x.id == pid);
+          if (!p) continue;
+
+          const qta = bozzaCarico[pid];
+          const prezzoEuro = p.prezzo / 100;
+          const subtotale = prezzoEuro * qta;
+
+          totale += subtotale;
+
+          testo += `${p.nome}: +${qta} x € ${prezzoEuro.toFixed(
+            2
+          )} = € ${subtotale.toFixed(2)}\n`;
+        }
+
+        pre.innerText = testo;
+        if (spanTot) spanTot.innerText = totale.toFixed(2);
+      }
+
+      async function salvaBozza() {
+        if (!braccialeId || bozzaBloccata) return;
+
+        const entries = Object.entries(bozzaCarico);
+        if (entries.length === 0) {
+          alert("Bozza vuota.");
+          return;
+        }
+
+        const totSpan = document.getElementById("totale_bozza");
+        const totText = totSpan ? totSpan.innerText : "0.00";
+        const conferma = confirm(
+          `Confermi il carico di circa € ${totText} su questo bracciale?`
+        );
+        if (!conferma) return;
+
+        let qualcheInCoda = false;
+
+        for (const [prodottoId, quantita] of entries) {
+          const body = {
+            bracciale_id: braccialeId,
+            prodotto_id: prodottoId,
+            quantita,
+            operatore_id: operatore.id
+          };
+
+          const op = {
+            url: "/carica",
+            options: {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body)
+            }
+          };
+
+          try {
+            const res = await fetch(op.url, op.options);
+            const data = await res.json();
+
+            if (data.error) {
+              console.error("Errore carico singolo prodotto:", data.error);
+              alert("Errore carico: " + data.error);
+              return;
+            }
+          } catch (e) {
+            console.warn("Rete non disponibile, operazione messa in coda:", op);
+            pendingOps.push(op);
+            savePendingOps();
+            qualcheInCoda = true;
+          }
+        }
+
+        // provo a sincronizzare subito se la rete è tornata
+        await syncPendingOps();
+
+        bozzaCarico = {};
+        bozzaBloccata = true;
+
+        if (qualcheInCoda) {
+          document.getElementById("msg").innerText =
+            "⚠️ Rete instabile: carico messo in coda. Verrà sincronizzato quando torna la connessione.";
+        } else {
+          document.getElementById("msg").innerText =
+            "✅ Carico salvato. Preparazione nuovo cliente...";
+        }
+
+        document.body.classList.add("flash-success");
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+
+      // ==============================
+      // ✅ SALDO
+      // ==============================
+      async function aggiornaSaldoCassa() {
+        if (!braccialeId) return;
+
+        const res = await fetch("/saldo/" + braccialeId);
+        const data = await res.json();
+
+        if (!Array.isArray(data) || data.length === 0) {
+          document.getElementById("saldo_cassa").innerText =
+            "Nessun prodotto caricato.";
+          return;
+        }
+
+        document.getElementById("saldo_cassa").innerText = data
+          .map((r) => `${r.nome}: ${r.quantita}`)
+          .join("\n");
+      }
+
+      async function aggiornaColoriCassa() {
+        if (!braccialeId) return;
+
+        const res = await fetch("/saldo/" + braccialeId);
+        const data = await res.json();
+
+        document
+          .querySelectorAll("#lista_prodotti_cassa button")
+          .forEach((btn) => btn.classList.remove("prodotto-attivo"));
+
+        document
+          .querySelectorAll("#lista_prodotti_cassa button")
+          .forEach((btn) => {
+            const pid = btn.dataset.prodottoId;
+
+            const trovato = data.find(
+              (p) => String(p.prodotto_id) === String(pid) && p.quantita > 0
+            );
+
+            if (trovato) btn.classList.add("prodotto-attivo");
+          });
+      }
+
+      function logout() {
+        if (!confirm("Vuoi uscire?")) return;
+        localStorage.removeItem("operatore");
+        localStorage.removeItem("operatore_backup");
+        window.location.href = "login.html";
+      }
+
+      // ==============================
+      // AVVIO
+      // ==============================
+      caricaProdottiCassa();
+      updateNetStatus();
+      syncPendingOps();
+    </script>
+  </body>
+</html>

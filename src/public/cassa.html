@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cassa Evento</title>
+  </head>
+  <body>
+    <h1>💰 CASSA EVENTO</h1>
+
+    <h2>Bracciale</h2>
+    <label>ID Bracciale:</label>
+    <input type="number" id="bracciale" value="1" />
+
+    <h2>Carica manuale</h2>
+    <button onclick="carica(1)">🍹 Carica 1 Mojito</button>
+    <button onclick="carica(2)">🍺 Carica 1 Birra</button>
+
+    <hr />
+
+    <h2>Carica da Ordine Web</h2>
+    <label>Codice Ordine:</label>
+    <input type="number" id="ordine" />
+    <button onclick="applicaOrdine()">📲 Applica Ordine al Bracciale</button>
+
+    <p id="msg"></p>
+
+    <script>
+      async function carica(prodottoId) {
+        const braccialeId = document.getElementById("bracciale").value;
+
+        const res = await fetch("/carica", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            bracciale_id: braccialeId,
+            prodotto_id: prodottoId,
+            quantita: 1
+          })
+        });
+
+        const data = await res.json();
+        document.getElementById("msg").innerText = data.status || "Errore";
+      }
+
+      async function applicaOrdine() {
+        const braccialeId = document.getElementById("bracciale").value;
+        const ordineId = document.getElementById("ordine").value;
+
+        const res = await fetch("/applica-ordine", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            ordine_id: ordineId,
+            bracciale_id: braccialeId
+          })
+        });
+
+        const data = await res.json();
+        document.getElementById("msg").innerText =
+          data.status || data.error || "Errore";
+      }
+    </script>
+  </body>
+</html>

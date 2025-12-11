@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Login Operatore</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h1>🔐 Login Operatore</h1>
+
+    <label>Evento:</label>
+    <select id="evento"></select><br /><br />
+
+    <label>Nome:</label>
+    <input type="text" id="nome" /><br /><br />
+
+    <label>Password:</label>
+    <input type="password" id="password" /><br /><br />
+
+    <button onclick="login()">✅ Login</button>
+
+    <p id="msg"></p>
+
+    <script>
+      async function caricaEventi() {
+        const res = await fetch("/eventi");
+        const eventi = await res.json();
+
+        const select = document.getElementById("evento");
+        eventi.forEach((e) => {
+          const opt = document.createElement("option");
+          opt.value = e.id;
+          opt.innerText = e.nome;
+          select.appendChild(opt);
+        });
+      }
+
+      async function login() {
+        const nome = document.getElementById("nome").value;
+        const password = document.getElementById("password").value;
+        const eventoId = document.getElementById("evento").value;
+
+        const res = await fetch("/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            nome,
+            password,
+            evento_id: eventoId
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.operatore) {
+          // salviamo in localStorage
+          localStorage.setItem("operatore", JSON.stringify(data.operatore));
+
+          if (data.operatore.ruolo === "cassa") {
+            window.location.href = "cassa_nfc.html";
+          } 
+          else if (data.operatore.ruolo === "bar") {
+            window.location.href = "bar_nfc.html";
+          } 
+          else if (data.operatore.ruolo === "admin") {
+            window.location.href = "admin.html";
+          }
+        } else {
+          document.getElementById("msg").innerText = data.error;
+        }
+      }
+
+      caricaEventi();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,412 @@
+/* =======================
+   RESET BASE
+======================= */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 10px;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  background: #f2f2f7; /* iOS systemGroupedBackground */
+  color: #1c1c1e;      /* iOS label color */
+}
+
+/* =======================
+   VARIABILI TEMA
+======================= */
+:root {
+  --accent-color: #0a84ff;          /* blu di default, sovrascritto da JS per evento */
+  --accent-color-strong: #0071e3;   /* blu hover, sovrascritto da JS per evento */
+
+  --accent-green: #34c759;          /* iOS systemGreen */
+  --accent-red: #ff3b30;            /* iOS systemRed */
+}
+
+/* =======================
+   LAYOUT GENERALE
+======================= */
+h1 {
+  margin: 0 0 16px 0;
+  padding: 16px 18px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 700;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+h2,
+h3 {
+  margin-top: 0;
+  color: #111827;
+}
+
+/* Contenitori stile card iOS */
+.box {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px 14px;
+  margin-bottom: 14px;
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.05),
+    0 8px 16px rgba(0,0,0,0.04);
+}
+
+/* =======================
+   INPUT & SELECT
+======================= */
+input,
+select {
+  width: 100%;
+  padding: 10px 12px;
+  margin-top: 6px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  border: 1px solid #d1d1d6; /* iOS border */
+  font-size: 16px;
+  background: #f9f9fb;
+  transition: border 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border: 1px solid var(--accent-color);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(10,132,255,0.15);
+}
+
+/* =======================
+   BUTTON BASE
+======================= */
+button {
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent-color); /* iOS systemBlue / tema evento */
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.05s, box-shadow 0.1s;
+  box-shadow: 0 4px 8px rgba(10,132,255,0.25);
+}
+
+button:hover {
+  background: var(--accent-color-strong);
+}
+
+button:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.18);
+}
+
+/* =======================
+   BOTTONI SPECIALI
+======================= */
+button.reset {
+  background: var(--accent-red);
+  box-shadow: 0 4px 8px rgba(255,59,48,0.25);
+}
+
+button.reset:hover {
+  background: #e02b21;
+}
+
+button.export {
+  background: var(--accent-green);
+  box-shadow: 0 4px 8px rgba(52,199,89,0.25);
+}
+
+button.export:hover {
+  background: #2fb04e;
+}
+
+button.small {
+  padding: 7px 10px;
+  font-size: 14px;
+}
+
+/* =======================
+   LISTE
+======================= */
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  padding: 10px 12px;
+  background: #f9f9fb; /* iOS secondaryGroupedBackground */
+  margin-bottom: 6px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* =======================
+   MESSAGGI
+======================= */
+#msg {
+  margin-top: 10px;
+  font-weight: 500;
+  color: #3a3a3c; /* iOS secondary label */
+}
+
+/* =======================
+   SALDO / TESTO PRE
+======================= */
+pre {
+  background: #f2f2f7;
+  color: #0c0075;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 15px;
+  border: 1px solid #e5e5ea;
+}
+
+/* =======================
+   GRIGLIA PRODOTTI (3 PER RIGA)
+======================= */
+#lista_prodotti_cassa,
+#lista_prodotti_bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+#lista_prodotti_cassa button,
+#lista_prodotti_bar button {
+  width: 100%;
+  margin: 0;
+  padding: 14px 6px;
+  text-align: center;
+  background: #e5e5ea; /* iOS systemGray4 */
+  color: #1c1c1e;
+  font-size: 18px;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+#lista_prodotti_cassa button:hover,
+#lista_prodotti_bar button:hover {
+  background: #d1d1d6;
+}
+
+/* =======================
+   BOTTONI "USA CODICE"
+======================= */
+button.code-btn {
+  width: auto;
+  display: inline-block;
+  padding: 6px 12px;
+  font-size: 14px;
+  background: #e5e5ea;
+  color: #111827;
+  box-shadow: none;
+}
+
+button.code-btn:hover {
+  background: #d1d1d6;
+}
+
+/* =======================
+   INPUT CODICE
+======================= */
+input.code-input {
+  width: 130px;
+  display: inline-block;
+  padding: 8px 12px;
+  font-size: 15px;
+  margin-right: 6px;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 2px;
+  background: #ffffff;
+}
+
+/* =======================
+   PRODOTTO PRESENTE (ATTIVO)
+======================= */
+button.prodotto-attivo {
+  background: var(--accent-green) !important; /* verde iOS */
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 0 0 3px rgba(52,199,89,0.25);
+}
+
+button.prodotto-attivo:hover {
+  background: #2fb04e !important;
+}
+
+/* =======================
+   BOTTONE MENO (➖)
+======================= */
+button.minus-btn {
+  width: 42px !important;
+  min-width: 42px !important;
+  max-width: 42px !important;
+
+  margin: 3px 0 14px 8px !important;
+  padding: 5px 0 !important;
+  font-size: 18px !important;
+
+  background: #d1d1d6 !important;
+  color: #1c1c1e !important;
+
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+}
+
+button.minus-btn:hover {
+  background: #c7c7cc !important;
+}
+
+/* =======================
+   TOP BAR STILE iOS
+======================= */
+.top-bar {
+  background: #ffffff;
+  color: #111827;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 0 0 18px 18px;
+  margin: -10px -10px 14px -10px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+}
+
+.top-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.top-sub {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.logout-btn {
+  background: var(--accent-red);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.logout-btn:hover {
+  background: #e02b21;
+}
+
+/* =======================
+   ANIMAZIONI
+======================= */
+.flash-success {
+  animation: flashGreen 0.6s;
+}
+
+@keyframes flashGreen {
+  0%   { background-color: #34c75933; }
+  50%  { background-color: #34c75955; }
+  100% { background-color: transparent; }
+}
+
+.flash-error {
+  animation: flashRed 0.6s;
+}
+
+@keyframes flashRed {
+  0%   { background-color: #ff3b3033; }
+  50%  { background-color: #ff3b3055; }
+  100% { background-color: transparent; }
+}
+
+.shake {
+  animation: shake 0.3s;
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  75% { transform: translateX(-3px); }
+  100% { transform: translateX(0); }
+}
+
+/* ====== SWITCH MODALITÀ VELOCE (BAR) ====== */
+.fast-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: #f2f2f7;
+}
+
+.fast-mode-label {
+  font-size: 14px;
+  color: #3a3a3c;
+}
+
+/* Switch container */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 28px;
+}
+
+/* Nascondi input */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Sfondo slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #d1d1d6;
+  transition: 0.2s;
+  border-radius: 999px;
+}
+
+/* Pallina */
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #ffffff;
+  transition: 0.2s;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+/* ON */
+.switch input:checked + .slider {
+  background: var(--accent-green); /* iOS green */
+}
+
+/* Pallina spostata a destra quando ON */
+.switch input:checked + .slider:before {
+  transform: translateX(20px);
+}

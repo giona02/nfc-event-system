@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bar Evento</title>
+  </head>
+  <body>
+    <h1>🍹 BAR EVENTO</h1>
+
+    <label>Bracciale ID:</label>
+    <input type="number" id="bracciale" value="1" />
+    <button onclick="caricaSaldo()">🔄 Aggiorna saldo</button>
+
+    <h2>Saldo</h2>
+    <pre id="saldo"></pre>
+
+    <h2>Scarica prodotto</h2>
+    <button onclick="scarica(1)">🍹 Scarica 1 Mojito</button>
+    <button onclick="scarica(2)">🍺 Scarica 1 Birra</button>
+
+    <p id="msg"></p>
+
+    <script>
+      async function caricaSaldo() {
+        const braccialeId = document.getElementById("bracciale").value;
+
+        const res = await fetch("/saldo/" + braccialeId);
+        const data = await res.json();
+
+        if (Array.isArray(data) && data.length > 0) {
+          const testo = data
+            .map((riga) => `${riga.nome}: ${riga.quantita}`)
+            .join("\n");
+          document.getElementById("saldo").innerText = testo;
+        } else {
+          document.getElementById("saldo").innerText =
+            "Nessun credito su questo bracciale.";
+        }
+      }
+
+      async function scarica(prodottoId) {
+        const braccialeId = document.getElementById("bracciale").value;
+
+        const res = await fetch("/scarica", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            bracciale_id: braccialeId,
+            prodotto_id: prodottoId
+          })
+        });
+
+        const data = await res.json();
+        document.getElementById("msg").innerText =
+          data.status || data.error || "Errore";
+
+        // dopo lo scarico aggiorno il saldo
+        await caricaSaldo();
+      }
+
+      // carico il saldo all'apertura
+      caricaSaldo();
+    </script>
+  </body>
+</html>
