@@ -96,11 +96,13 @@
     <!-- BRACCIALI -->
     <div class="box">
       <h2>🎟️ Bracciali dell'evento</h2>
-
-      <h3>Registra bracciale</h3>
-      <input type="text" id="uid_bracciale" placeholder="UID NFC (opzionale)" />
-      <button onclick="creaBracciale()">➕ Registra Bracciale</button>
-
+    
+      <h3>Registra bracciale (solo NFC)</h3>
+      <button onclick="registraBraccialeNFC()">📡 Leggi e registra bracciale</button>
+      <p id="ultimo_bracciale_creato" style="font-size: 14px; color: #3a3a3c; margin-top: 8px;">
+        Nessun bracciale appena creato.
+      </p>
+    
       <h3>Lista bracciali</h3>
       <ul id="lista_bracciali"></ul>
     </div>
