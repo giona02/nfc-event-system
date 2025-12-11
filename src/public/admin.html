@@ -319,20 +319,49 @@
       }
 
       // ===== BRACCIALI =====
-      async function creaBracciale() {
-        if (!eventoCorrente) return;
-
-        const uid = document.getElementById("uid_bracciale").value;
-
-        await fetch("/bracciali", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uid, evento_id: eventoCorrente })
-        });
-
-        document.getElementById("uid_bracciale").value = "";
-
-        caricaBracciali();
+      async function registraBraccialeNFC() {
+        if (!eventoCorrente) {
+          alert("Seleziona un evento prima di registrare bracciali.");
+          return;
+        }
+      
+        if (!("NDEFReader" in window)) {
+          alert("NFC non supportato su questo dispositivo.");
+          return;
+        }
+      
+        try {
+          const reader = new NDEFReader();
+          await reader.scan();
+          document.getElementById("ultimo_bracciale_creato").innerText =
+            "Avvicina il bracciale al lettore...";
+      
+          reader.onreading = async (event) => {
+            const uid = event.serialNumber;
+      
+            const res = await fetch("/bracciali", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ uid, evento_id: eventoCorrente })
+            });
+      
+            const data = await res.json();
+      
+            if (data.error) {
+              alert(data.error);
+              return;
+            }
+      
+            document.getElementById("ultimo_bracciale_creato").innerText =
+              `Bracciale creato: ID ${data.id} | UID ${data.uid} | Codice: ${data.codice}`;
+      
+            // ricarica lista
+            caricaBracciali();
+          };
+        } catch (err) {
+          console.error(err);
+          alert("Errore lettura NFC o permessi negati.");
+        }
       }
 
       async function caricaBracciali() {
