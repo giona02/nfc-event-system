@@ -76,12 +76,34 @@ app.get("/prodotti", async (req, res) => {
   }
 });
 
-// REGISTRA UN BRACCIALE NFC
+// REGISTRA UN BRACCIALE NFC (evita doppioni per stesso UID + evento)
 app.post("/bracciali", async (req, res) => {
   try {
     const { uid, evento_id } = req.body;
 
-    // genera un codice e assicurati che sia unico
+    if (!evento_id) {
+      return res.status(400).json({ error: "evento_id mancante" });
+    }
+
+    if (!uid) {
+      return res.status(400).json({ error: "UID NFC mancante" });
+    }
+
+    // 1) Controllo se esiste già un bracciale con questo UID per questo evento
+    const esistente = await pool.query(
+      "SELECT * FROM bracciali WHERE uid = $1 AND evento_id = $2",
+      [uid, evento_id]
+    );
+
+    if (esistente.rows.length > 0) {
+      // Già registrato → ritorno quello, NON ne creo un altro
+      return res.json({
+        ...esistente.rows[0],
+        gia_registrato: true
+      });
+    }
+
+    // 2) Genero un codice a 6 caratteri univoco
     let codice;
     let esiste = true;
 
@@ -94,14 +116,21 @@ app.post("/bracciali", async (req, res) => {
       esiste = check.rows.length > 0;
     }
 
+    // 3) Inserisco nuovo bracciale
     const result = await pool.query(
       "INSERT INTO bracciali (uid, evento_id, codice) VALUES ($1, $2, $3) RETURNING *",
       [uid, evento_id, codice]
     );
 
-    res.json(result.rows[0]); // qui avrai anche result.rows[0].codice
+    res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
+    // nel caso il vincolo UNIQUE scatti comunque
+    if (err.code === "23505") {
+      return res
+        .status(400)
+        .json({ error: "Questo bracciale è già registrato per l'evento." });
+    }
     res.status(500).json({ error: "Errore registrazione bracciale" });
   }
 });
