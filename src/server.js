@@ -765,6 +765,42 @@ app.get("/bracciali", async (req, res) => {
   res.json(result.rows);
 });
 
+// SALVA/AGGIORNA INSTAGRAM SU BRACCIALE
+app.post("/bracciali/:id/instagram", async (req, res) => {
+  try {
+    const { id } = req.params;
+    let { instagram } = req.body;
+
+    if (!instagram) {
+      return res.status(400).json({ error: "instagram mancante" });
+    }
+
+    instagram = instagram.trim();
+
+    // normalizza: accetta "@nome" o "nome"
+    if (instagram.startsWith("@")) instagram = instagram.slice(1);
+
+    // super base: solo caratteri consentiti IG
+    if (!/^[A-Za-z0-9._]{1,30}$/.test(instagram)) {
+      return res.status(400).json({ error: "Username Instagram non valido" });
+    }
+
+    const result = await pool.query(
+      "UPDATE bracciali SET instagram = $1 WHERE id = $2 RETURNING *",
+      [instagram, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Bracciale non trovato" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Errore salvataggio instagram" });
+  }
+});
+
 //ELIMINA EVENTO
 app.delete("/eventi/:id", async (req, res) => {
   try {
