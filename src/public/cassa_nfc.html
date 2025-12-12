@@ -470,6 +470,106 @@
           .join("\n");
       }
 
+      function aggiornaBoxInstagram() {
+        const box = document.getElementById("ig_box");
+        const msg = document.getElementById("ig_msg");
+        const input = document.getElementById("ig_input");
+      
+        msg.innerText = "";
+        input.value = "";
+      
+        if (!braccialeId) {
+          box.style.display = "none";
+          return;
+        }
+      
+        // se non c'è IG → mostra box
+        if (!braccialeInstagram) {
+          box.style.display = "block";
+        } else {
+          box.style.display = "none";
+        }
+      }
+
+      function normalizzaInstagram(val) {
+        let s = (val || "").trim();
+        if (s.startsWith("@")) s = s.slice(1);
+        return s;
+      }
+      
+      async function scriviLinkInstagramSuNFC(username) {
+        if (!("NDEFReader" in window)) {
+          alert("Scrittura NFC non supportata su questo dispositivo/browser.");
+          return false;
+        }
+      
+        try {
+          const ndef = new NDEFReader();
+          await ndef.write({
+            records: [
+              {
+                recordType: "url",
+                data: "https://www.instagram.com/" + username
+              }
+            ]
+          });
+          return true;
+        } catch (e) {
+          console.error(e);
+          return false;
+        }
+      }
+      
+      async function salvaInstagramSuBracciale() {
+        if (!braccialeId) return;
+      
+        const igMsg = document.getElementById("ig_msg");
+        let username = normalizzaInstagram(
+          document.getElementById("ig_input").value
+        );
+      
+        if (!username) {
+          igMsg.innerText = "Inserisci un username Instagram.";
+          return;
+        }
+      
+        // validazione base
+        if (!/^[A-Za-z0-9._]{1,30}$/.test(username)) {
+          igMsg.innerText = "Username non valido.";
+          return;
+        }
+      
+        igMsg.innerText = "Salvataggio in corso...";
+      
+        // 1) salva nel DB
+        const res = await fetch("/bracciali/" + braccialeId + "/instagram", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ instagram: username })
+        });
+      
+        const data = await res.json();
+        if (!res.ok) {
+          igMsg.innerText = data.error || "Errore salvataggio Instagram";
+          return;
+        }
+      
+        // 2) scrivi sul tag NFC (solo se siamo su device NFC compatibile)
+        const ok = await scriviLinkInstagramSuNFC(username);
+        if (!ok) {
+          igMsg.innerText =
+            "✅ Salvato nel sistema, ma NON sono riuscito a scrivere sul tag (NFC non supportato o permessi).";
+          // comunque teniamo instagram salvato
+          braccialeInstagram = username;
+          aggiornaBoxInstagram();
+          return;
+        }
+      
+        igMsg.innerText = "✅ Instagram salvato e scritto sul bracciale!";
+        braccialeInstagram = username;
+        aggiornaBoxInstagram();
+      }
+
       async function aggiornaColoriCassa() {
         if (!braccialeId) return;
 
