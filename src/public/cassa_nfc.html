@@ -62,6 +62,26 @@
       <p>Bracciale ID: <span id="bracciale_label">---</span></p>
       <p>Codice bracciale: <span id="codice_label">---</span></p>
 
+      <div id="ig_box" style="display:none; margin-top:10px;">
+        <h3>📷 Instagram</h3>
+        <p style="margin:6px 0; color:#3a3a3c;">
+          Questo bracciale non ha Instagram. Vuoi aggiungerlo?
+        </p>
+      
+        <input
+          type="text"
+          id="ig_input"
+          placeholder="@username"
+          style="margin-bottom:8px;"
+        />
+      
+        <button class="small" onclick="salvaInstagramSuBracciale()">
+          ✅ Salva e scrivi su NFC
+        </button>
+      
+        <p id="ig_msg" style="margin-top:8px; font-size:14px;"></p>
+      </div>
+
       <h3>Codice manuale</h3>
       <input
         type="text"
