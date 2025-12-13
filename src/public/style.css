@@ -210,3 +210,60 @@ button.minus-btn{
 @keyframes ok { 0%{ background:rgba(52,199,89,.15);} 100%{ background:transparent;} }
 .flash-error{ animation: bad .45s; }
 @keyframes bad { 0%{ background:rgba(255,59,48,.15);} 100%{ background:transparent;} }
+
+/* ===== APP NAV (TAB) ===== */
+.app-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 99;
+  background: #f2f2f7;
+  padding: 8px 0;
+  margin-bottom: 10px;
+}
+
+.tabbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.tabbtn {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid #e5e5ea;
+  background: #ffffff;
+  color: #111;
+  font-weight: 900;
+  padding: 12px;
+  font-size: 16px;
+  box-shadow: none;
+}
+
+.tabbtn.active {
+  background: #0a84ff;
+  color: #fff;
+  border-color: #0a84ff;
+}
+
+/* ===== SCHERMATE ===== */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ===== BLOCCO PRODOTTI FINCHÉ NON C'È BRACCIALE ===== */
+.locked {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.lock-hint {
+  margin-top: 8px;
+  font-weight: 800;
+  color: #555;
+}
+
+/* ===== RENDI BOX PIÙ "APP" ===== */
+.box {
+  margin-bottom: 12px;
+}
+
+/* (opzionale) rendi il titolo più piccolo */
+h2 { font-size: 16px; margin-bottom: 8px; }
