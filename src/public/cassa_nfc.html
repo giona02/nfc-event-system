@@ -272,6 +272,7 @@
           }
         
           braccialeId = data.id;
+          vaiSchermata("prodotti");
           braccialeInstagram = data.instagram || null;
           aggiornaBoxInstagram();
           bozzaCarico = {};
@@ -280,7 +281,7 @@
           document.getElementById("bracciale_label").innerText = braccialeId;
           document.getElementById("codice_label").innerText = data.codice || "----";
           document.getElementById("msg").innerText = "Bracciale pronto ✅";
-        
+
           aggiornaSaldoCassa();
           aggiornaColoriCassa();
           aggiornaAnteprimaBozza();
@@ -314,6 +315,7 @@
         }
 
         braccialeId = data.id;
+        vaiSchermata("prodotti");
         braccialeInstagram = data.instagram || null;
         aggiornaBoxInstagram();
         bozzaCarico = {};
@@ -676,12 +678,48 @@
         window.location.href = "login.html";
       }
 
+      function vaiSchermata(nome) {
+        // schermate
+        document.getElementById("screen_scan").classList.remove("active");
+        document.getElementById("screen_prodotti").classList.remove("active");
+      
+        // tab
+        document.getElementById("tab_bracciale").classList.remove("active");
+        document.getElementById("tab_prodotti").classList.remove("active");
+      
+        if (nome === "scan") {
+          document.getElementById("screen_scan").classList.add("active");
+          document.getElementById("tab_bracciale").classList.add("active");
+        } else {
+          document.getElementById("screen_prodotti").classList.add("active");
+          document.getElementById("tab_prodotti").classList.add("active");
+        }
+      
+        aggiornaLockProdotti();
+      }
+      
+      function aggiornaLockProdotti() {
+        const box = document.getElementById("box_prodotti");
+        const hint = document.getElementById("lock_hint");
+      
+        if (!box) return;
+      
+        if (!braccialeId) {
+          box.classList.add("locked");
+          if (hint) hint.style.display = "block";
+        } else {
+          box.classList.remove("locked");
+          if (hint) hint.style.display = "none";
+        }
+      }
+
       // ==============================
       // AVVIO
       // ==============================
       caricaProdottiCassa();
       updateNetStatus();
       syncPendingOps();
+      aggiornaLockProdotti();
     </script>
   </div>
   </body>
