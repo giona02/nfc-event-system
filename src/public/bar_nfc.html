@@ -259,6 +259,8 @@
             document.getElementById("bracciale_label").innerText = braccialeId;
             document.getElementById("msg").innerText = "Bracciale pronto ✅";
 
+            vaiSchermata("prodotti");
+
             await aggiornaSaldo();
           };
         } catch (err) {
@@ -299,6 +301,8 @@
         document.getElementById("uid_label").innerText = "(da codice)";
         document.getElementById("bracciale_label").innerText = braccialeId;
         document.getElementById("msg").innerText = "Bracciale pronto ✅";
+
+        vaiSchermata("prodotti");
 
         await aggiornaSaldo();
       }
@@ -442,6 +446,38 @@
         localStorage.removeItem("operatore");
         localStorage.removeItem("operatore_backup");
         window.location.href = "login.html";
+      }
+
+      function vaiSchermata(nome) {
+        document.getElementById("screen_scan").classList.remove("active");
+        document.getElementById("screen_prodotti").classList.remove("active");
+      
+        document.getElementById("tab_bracciale").classList.remove("active");
+        document.getElementById("tab_prodotti").classList.remove("active");
+      
+        if (nome === "scan") {
+          document.getElementById("screen_scan").classList.add("active");
+          document.getElementById("tab_bracciale").classList.add("active");
+        } else {
+          document.getElementById("screen_prodotti").classList.add("active");
+          document.getElementById("tab_prodotti").classList.add("active");
+        }
+      
+        aggiornaLockProdotti();
+      }
+      
+      function aggiornaLockProdotti() {
+        const box = document.getElementById("box_prodotti");
+        const hint = document.getElementById("lock_hint");
+        if (!box) return;
+      
+        if (!braccialeId) {
+          box.classList.add("locked");
+          if (hint) hint.style.display = "block";
+        } else {
+          box.classList.remove("locked");
+          if (hint) hint.style.display = "none";
+        }
       }
 
       // ==============================
