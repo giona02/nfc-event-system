@@ -657,8 +657,16 @@
         const data = await res.json();
 
         document
-          .querySelectorAll("#lista_prodotti_cassa button")
-          .forEach((btn) => btn.classList.remove("prodotto-attivo"));
+          .querySelectorAll("#lista_prodotti_cassa button[data-prodotto-id]")
+          .forEach((btn) => {
+            const pid = btn.dataset.prodottoId;
+        
+            const trovato = data.find(
+              (p) => String(p.prodotto_id) === String(pid) && p.quantita > 0
+            );
+        
+            if (trovato) btn.classList.add("prodotto-attivo");
+          });
 
         document
           .querySelectorAll("#lista_prodotti_cassa button")
