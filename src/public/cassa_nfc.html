@@ -342,21 +342,23 @@
         container.innerHTML = "";
 
         prodotti.forEach((p) => {
-          const wrapper = document.createElement("div");
-
+          const row = document.createElement("div");
+          row.className = "prod-row";
+        
           const btnPlus = document.createElement("button");
+          btnPlus.className = "prod-btn";
           btnPlus.innerText = `➕ ${p.nome}`;
           btnPlus.dataset.prodottoId = p.id;
           btnPlus.onclick = () => aggiungi(p.id);
-
+        
           const btnMinus = document.createElement("button");
-          btnMinus.innerText = "➖";
-          btnMinus.className = "minus-btn";
+          btnMinus.className = "minus-mini";
+          btnMinus.innerText = "−";
           btnMinus.onclick = () => togli(p.id);
-
-          wrapper.appendChild(btnPlus);
-          wrapper.appendChild(btnMinus);
-          container.appendChild(wrapper);
+        
+          row.appendChild(btnPlus);
+          row.appendChild(btnMinus);
+          container.appendChild(row);
         });
       }
 
