@@ -64,20 +64,39 @@
 
       <div id="ig_box" style="display:none; margin-top:10px;">
         <h3>📷 Instagram</h3>
-        <p style="margin:6px 0; color:#3a3a3c;">
-          Questo bracciale non ha Instagram. Vuoi aggiungerlo?
-        </p>
       
-        <input
-          type="text"
-          id="ig_input"
-          placeholder="@username"
-          style="margin-bottom:8px;"
-        />
+        <div id="ig_view" style="display:none;">
+          <p style="margin:6px 0; color:#3a3a3c;">
+            Instagram attuale: <b>@<span id="ig_attuale">---</span></b>
+          </p>
       
-        <button class="small" onclick="salvaInstagramSuBracciale()">
-          ✅ Salva e scrivi su NFC
-        </button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="small" style="width:auto;" onclick="mostraModificaInstagram()">
+              ✏️ Modifica
+            </button>
+            <button class="small reset" style="width:auto;" onclick="rimuoviInstagram()">
+              🗑️ Rimuovi
+            </button>
+          </div>
+        </div>
+      
+        <div id="ig_edit" style="display:none;">
+          <p style="margin:6px 0; color:#3a3a3c;">
+            Inserisci username (senza spazi). Esempio: <b>@mario.rossi</b>
+          </p>
+      
+          <input type="text" id="ig_input" placeholder="@username" />
+      
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="small" style="width:auto;" onclick="salvaInstagramSuBracciale()">
+              ✅ Salva (e scrivi su NFC)
+            </button>
+            <button class="small" style="width:auto; background:#e5e5ea; color:#111827; box-shadow:none;"
+                    onclick="annullaModificaInstagram()">
+              Annulla
+            </button>
+          </div>
+        </div>
       
         <p id="ig_msg" style="margin-top:8px; font-size:14px;"></p>
       </div>
