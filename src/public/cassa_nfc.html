@@ -491,23 +491,46 @@
 
       function aggiornaBoxInstagram() {
         const box = document.getElementById("ig_box");
+        const view = document.getElementById("ig_view");
+        const edit = document.getElementById("ig_edit");
         const msg = document.getElementById("ig_msg");
         const input = document.getElementById("ig_input");
+        const attuale = document.getElementById("ig_attuale");
       
         msg.innerText = "";
-        input.value = "";
+        if (input) input.value = "";
       
         if (!braccialeId) {
           box.style.display = "none";
           return;
         }
       
-        // se non c'è IG → mostra box
-        if (!braccialeInstagram) {
-          box.style.display = "block";
+        box.style.display = "block";
+      
+        if (braccialeInstagram) {
+          // mostra vista "attuale"
+          attuale.innerText = braccialeInstagram;
+          view.style.display = "block";
+          edit.style.display = "none";
         } else {
-          box.style.display = "none";
+          // non c'è IG → apri direttamente edit
+          view.style.display = "none";
+          edit.style.display = "block";
         }
+      }
+
+      function mostraModificaInstagram() {
+        document.getElementById("ig_view").style.display = "none";
+        document.getElementById("ig_edit").style.display = "block";
+      
+        // precompila
+        const input = document.getElementById("ig_input");
+        input.value = braccialeInstagram ? "@" + braccialeInstagram : "";
+        input.focus();
+      }
+      
+      function annullaModificaInstagram() {
+        aggiornaBoxInstagram();
       }
 
       function normalizzaInstagram(val) {
