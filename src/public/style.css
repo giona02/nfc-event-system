@@ -267,3 +267,45 @@ button.minus-btn{
 
 /* (opzionale) rendi il titolo più piccolo */
 h2 { font-size: 16px; margin-bottom: 8px; }
+
+/* ===== CASSA: + grande e - piccolo rosso affiancati ===== */
+.prod-row{
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+/* bottone prodotto (il + grande) */
+.prod-btn{
+  flex: 1;
+  background: #e5e5ea;
+  color: #111;
+  border-radius: 16px;
+  font-weight: 900;
+  padding: 18px 10px;
+  min-height: 78px;
+  box-shadow: none;
+}
+
+/* minus mini rosso */
+.minus-mini{
+  width: 52px !important;
+  min-width: 52px !important;
+  max-width: 52px !important;
+
+  background: #ff3b30 !important;
+  color: #fff !important;
+  border-radius: 16px !important;
+
+  font-size: 28px !important;
+  font-weight: 900 !important;
+
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+/* feedback tap */
+.minus-mini:active,
+.prod-btn:active{
+  transform: scale(0.98);
+}
