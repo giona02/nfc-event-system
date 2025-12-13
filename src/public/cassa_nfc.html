@@ -605,6 +605,28 @@
         aggiornaBoxInstagram();
       }
 
+      async function rimuoviInstagram() {
+        if (!braccialeId) return;
+        if (!confirm("Rimuovere Instagram da questo bracciale?")) return;
+      
+        const igMsg = document.getElementById("ig_msg");
+        igMsg.innerText = "Rimozione in corso...";
+      
+        const res = await fetch("/bracciali/" + braccialeId + "/instagram", {
+          method: "DELETE"
+        });
+      
+        const data = await res.json();
+        if (!res.ok) {
+          igMsg.innerText = data.error || "Errore rimozione Instagram";
+          return;
+        }
+      
+        braccialeInstagram = null;
+        igMsg.innerText = "✅ Instagram rimosso.";
+        aggiornaBoxInstagram();
+      }
+
       async function aggiornaColoriCassa() {
         if (!braccialeId) return;
 
