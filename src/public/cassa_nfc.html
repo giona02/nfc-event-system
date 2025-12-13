@@ -549,10 +549,7 @@
           const ndef = new NDEFReader();
           await ndef.write({
             records: [
-              {
-                recordType: "url",
-                data: "https://www.instagram.com/" + username
-              }
+              { recordType: "url", data: "https://www.instagram.com/" + username }
             ]
           });
           return true;
@@ -561,21 +558,18 @@
           return false;
         }
       }
-      
+            
       async function salvaInstagramSuBracciale() {
         if (!braccialeId) return;
       
         const igMsg = document.getElementById("ig_msg");
-        let username = normalizzaInstagram(
-          document.getElementById("ig_input").value
-        );
+        let username = normalizzaInstagram(document.getElementById("ig_input").value);
       
         if (!username) {
           igMsg.innerText = "Inserisci un username Instagram.";
           return;
         }
       
-        // validazione base
         if (!/^[A-Za-z0-9._]{1,30}$/.test(username)) {
           igMsg.innerText = "Username non valido.";
           return;
@@ -596,18 +590,17 @@
           return;
         }
       
-        // 2) scrivi sul tag NFC (solo se siamo su device NFC compatibile)
+        // 2) scrivi su NFC
         const ok = await scriviLinkInstagramSuNFC(username);
         if (!ok) {
           igMsg.innerText =
             "✅ Salvato nel sistema, ma NON sono riuscito a scrivere sul tag (NFC non supportato o permessi).";
-          // comunque teniamo instagram salvato
           braccialeInstagram = username;
           aggiornaBoxInstagram();
           return;
         }
       
-        igMsg.innerText = "✅ Instagram salvato e scritto sul bracciale!";
+        igMsg.innerText = "✅ Instagram aggiornato e scritto sul bracciale!";
         braccialeInstagram = username;
         aggiornaBoxInstagram();
       }
