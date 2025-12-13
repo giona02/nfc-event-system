@@ -46,6 +46,17 @@
       </div>
     </div>
 
+    <div class="app-tabs">
+      <div class="tabbar">
+        <button id="tab_bracciale" class="tabbtn active" onclick="vaiSchermata('scan')">
+          📲 Bracciale
+        </button>
+        <button id="tab_prodotti" class="tabbtn" onclick="vaiSchermata('prodotti')">
+          🍹 Prodotti
+        </button>
+      </div>
+    </div>
+
     <p
       id="net_status"
       style="font-size: 13px; opacity: 0.8; margin: 6px 4px 12px;"
@@ -53,6 +64,7 @@
       Stato: 🟢 Online
     </p>
 
+    <div id="screen_scan" class="screen active">
     <div class="box box-scan">
       <h2>📲 Bracciale</h2>
 
@@ -76,8 +88,10 @@
 
       <p id="msg"></p>
     </div>
+    </div>
 
-    <div class="box box-actions">
+    <div id="screen_prodotti" class="screen">
+    <div class="box box-actions" id="box_prodotti">
       <h2>🍺 Scarica prodotti</h2>
 
       <div class="fast-mode-row">
@@ -92,6 +106,10 @@
         <span class="fast-mode-label">
           Modalità veloce (tap = scarico immediato)
         </span>
+          <p id="lock_hint" class="lock-hint" style="display:none;">
+            ⚠️ Prima leggi un bracciale
+          </p>
+      </div>
       </div>
 
       <div id="lista_prodotti_bar"></div>
