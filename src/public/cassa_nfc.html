@@ -134,7 +134,8 @@
     <!-- ========================= -->
     <!-- PRODOTTI -->
     <!-- ========================= -->
-    <div class="box box-actions">
+    <div id="screen_prodotti" class="screen">
+    <div class="box box-actions" id="box_prodotti">
       <h2>🍹 Carica prodotti</h2>
 
       <h3>🧾 Anteprima carico</h3>
@@ -144,6 +145,10 @@
       <div id="lista_prodotti_cassa"></div>
 
       <button onclick="salvaBozza()">✅ SALVA</button>
+      <p id="lock_hint" class="lock-hint" style="display:none;">
+        ⚠️ Prima leggi un bracciale
+      </p>
+    </div>
     </div>
 
     <script>
